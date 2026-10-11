@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Tính tiền trọ tháng này: tiền điện theo công tơ cộng các khoản cố định, gửi phiếu dạng chữ hoặc ảnh.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2315181E'/%3E%3Crect x='5' y='11' width='22' height='10' rx='2' fill='%23F5F6F8'/%3E%3Crect x='20' y='11' width='7' height='10' rx='2' fill='%23FFDE4D'/%3E%3C/svg%3E">
+<title>Tiền trọ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&amp;family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap">
+<style>
+/* Bố cục: bên trái là số điện tháng này (kèm số tháng trước) và đơn giá; bên phải là phiếu để gửi. Điện thoại: một cột, phiếu ngay dưới ô nhập số. */
+:root {
+  --ground: #E5E8EE;
+  --sheet: #FCFCFD;
+  --ink: #161B27;
+  --ink-soft: #566075;
+  --rule: #C8CEDA;
+  --edge: #7B8497;
+  --meter: #15181E;
+  --meter-edge: #353B47;
+  --digit: #F5F6F8;
+  --digit-soft: #8B93A3;
+  --mark: #FFDE4D;
+  --mark-ink: #161B27;
+  --bad: #B3261E;
+  --shadow: 0 1px 2px rgb(22 27 39 / .06), 0 12px 28px -16px rgb(22 27 39 / .32);
+
+  --font-display: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --t-small: .8125rem;
+  --t-base: 1rem;
+  --t-slip: 1.75rem;
+  --t-title: 2.25rem;
+  --t-meter: clamp(1.75rem, 1.2rem + 2.2vw, 2.25rem);
+  --t-total: 2.75rem;
+
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0E1116;
+    --sheet: #181C24;
+    --ink: #E6E9EF;
+    --ink-soft: #9BA3B4;
+    --rule: #303746;
+    --edge: #687183;
+    --meter: #07090C;
+    --meter-edge: #3B4251;
+    --digit: #F5F6F8;
+    --digit-soft: #7E8697;
+    --mark: #EBCB3E;
+    --mark-ink: #12151B;
+    --bad: #FF8F84;
+    --shadow: 0 1px 2px rgb(0 0 0 / .45), 0 12px 32px -14px rgb(0 0 0 / .7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0E1116;
+  --sheet: #181C24;
+  --ink: #E6E9EF;
+  --ink-soft: #9BA3B4;
+  --rule: #303746;
+  --edge: #687183;
+  --meter: #07090C;
+  --meter-edge: #3B4251;
+  --digit: #F5F6F8;
+  --digit-soft: #7E8697;
+  --mark: #EBCB3E;
+  --mark-ink: #12151B;
+  --bad: #FF8F84;
+  --shadow: 0 1px 2px rgb(0 0 0 / .45), 0 12px 32px -14px rgb(0 0 0 / .7);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.wrap { max-width: 1000px; margin-inline: auto; padding-inline: 16px; padding-block: 20px 56px; }
+@media (min-width: 720px) { .wrap { padding-inline: 32px; padding-block: 40px 80px; } }
+
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; margin-bottom: 24px; }
+.top h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: var(--t-title); line-height: 1; text-wrap: balance; }
+.stepper { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--edge); border-radius: 999px; background: var(--sheet); }
+.stepper button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--ink-soft); }
+.stepper button:hover { background: var(--ground); color: var(--ink); }
+.stepper svg { display: block; width: 16px; height: 16px; }
+.stepper output { min-width: 7.5em; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.noscript { margin: 0 0 20px; padding: 12px 14px; border: 1.5px solid var(--bad); border-radius: 8px; background: var(--sheet); color: var(--bad); font-weight: 500; }
+
+.label { margin: 0 0 12px; font-size: var(--t-small); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+
+.bench { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "readings" "slip" "prices"; }
+.readings { grid-area: readings; min-width: 0; }
+.slip { grid-area: slip; }
+.prices { grid-area: prices; }
+@media (min-width: 940px) {
+  .bench { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); grid-template-rows: auto 1fr; grid-template-areas: "readings slip" "prices slip"; column-gap: 48px; }
+  .prices { align-self: start; }
+  .slip { align-self: start; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); }
+}
+
+/* Số tháng trước */
+.prev { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--sheet); color: var(--ink-soft); font-size: .9375rem; font-variant-numeric: tabular-nums; }
+.prev b { color: var(--ink); font-weight: 600; }
+
+/* Ô công tơ */
+.meters { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "l-old . l-new" "m-old arrow m-new"; align-items: center; gap: 6px 10px; }
+.m-label { font-size: var(--t-small); font-weight: 500; color: var(--ink-soft); }
+.m-label-old { grid-area: l-old; }
+.m-label-new { grid-area: l-new; }
+.meter-old { grid-area: m-old; }
+.meter-new { grid-area: m-new; }
+.arrow { grid-area: arrow; color: var(--ink-soft); }
+.arrow svg { display: block; width: 18px; height: 18px; }
+.meter {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  padding: 10px 12px 8px 14px;
+  border: 1px solid var(--meter-edge); border-radius: 8px;
+  background-color: var(--meter);
+  background-image: linear-gradient(rgb(255 255 255 / .07), transparent 38%, transparent 62%, rgb(255 255 255 / .05));
+  box-shadow: inset 0 2px 8px rgb(0 0 0 / .55);
+}
+.meter:focus-within { outline: 2px solid var(--ink); outline-offset: 3px; }
+.meter input {
+  flex: 1 1 auto; width: 100%; min-width: 0; padding: 0; border: 0; outline: 0;
+  background: transparent; color: var(--digit); caret-color: var(--mark);
+  font-family: var(--font-display); font-weight: 500; font-size: var(--t-meter);
+  line-height: 1.15; letter-spacing: .14em; font-variant-numeric: tabular-nums;
+}
+.meter input::placeholder { color: var(--digit-soft); opacity: 1; }
+.meter .unit { flex: none; font-size: var(--t-small); color: var(--digit-soft); }
+@media (max-width: 359px) {
+  .meters { grid-template-columns: minmax(0, 1fr); grid-template-areas: "l-old" "m-old" "l-new" "m-new"; }
+  .arrow { display: none; }
+}
+.usage, .error { margin: 12px 0 0; font-variant-numeric: tabular-nums; }
+.usage { color: var(--ink-soft); }
+.usage b { color: var(--ink); font-weight: 600; }
+.error { color: var(--bad); font-weight: 500; }
+
+/* Phiếu */
+.slip { display: grid; gap: 16px; min-width: 0; padding: 22px 20px 20px; border-radius: 6px; background: var(--sheet); box-shadow: var(--shadow); }
+@media (min-width: 720px) { .slip { padding: 28px 28px 24px; } }
+.slip-head { display: grid; gap: 2px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+.slip-head p { margin: 0; font-size: var(--t-small); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.slip-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: var(--t-slip); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.lines { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.line { display: grid; grid-template-columns: minmax(0, auto) minmax(1.25em, 1fr) auto; align-items: end; column-gap: 8px; }
+.line .name { min-width: 0; overflow-wrap: anywhere; }
+.line .dots { margin-bottom: .42em; border-bottom: 2px dotted var(--rule); }
+.line .amt { font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.line .how { grid-column: 1 / -1; margin-top: 1px; font-size: var(--t-small); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.total { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-top: 14px; border-top: 2px dashed var(--rule); }
+.total > span { font-weight: 600; }
+.total strong { font-family: var(--font-display); font-weight: 600; font-size: var(--t-total); line-height: 1; font-variant-numeric: tabular-nums; }
+.total mark {
+  padding-inline: .1em; border-radius: 2px; color: var(--mark-ink);
+  background: linear-gradient(transparent 12%, var(--mark) 12%, var(--mark) 92%, transparent 92%);
+}
+.total mark.is-blank { background: none; color: var(--ink-soft); }
+.words { margin: -8px 0 0; font-size: var(--t-small); font-style: italic; color: var(--ink-soft); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: 1 1 8em;
+  min-height: 46px; padding: 10px 16px; border: 1.5px solid var(--ink); border-radius: 8px;
+  background: transparent; color: var(--ink); font-weight: 600; white-space: nowrap; text-decoration: none;
+}
+.btn-primary { background: var(--ink); color: var(--sheet); }
+.btn:hover:not(:disabled) { background: var(--ground); }
+.btn-primary:hover:not(:disabled) { background: var(--ink); opacity: .86; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:focus-visible { outline-offset: 3px; }
+.closing { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.hint, .status { margin: 0; font-size: var(--t-small); color: var(--ink-soft); }
+.status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.link { padding: 0; border: 0; background: none; color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.fallback { width: 100%; min-height: 10em; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 6px; background: var(--ground); color: var(--ink); font-size: var(--t-small); resize: vertical; }
+
+/* Giá & khoản cố định */
+.prices { min-width: 0; padding-top: 16px; border-top: 1px solid var(--rule); }
+.prices summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; padding-block: 4px; cursor: pointer; list-style: none; }
+.prices summary::-webkit-details-marker { display: none; }
+.prices summary .label { grid-area: 1 / 1; margin: 0; }
+.prices summary .sum { grid-area: 2 / 1 / 3 / 3; font-size: var(--t-small); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.prices summary::after { content: ""; grid-area: 1 / 2; width: 7px; height: 7px; margin: 0 4px 4px 2px; border-right: 2px solid var(--ink-soft); border-bottom: 2px solid var(--ink-soft); transform: rotate(45deg); }
+.prices[open] summary::after { margin: 4px 4px 0 2px; transform: rotate(-135deg); }
+.prices-body { display: grid; gap: 10px; padding-top: 14px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 8.5em 40px; align-items: center; gap: 8px; margin: 0; }
+.items { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.field { width: 100%; min-width: 0; height: 42px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 6px; background: var(--sheet); color: var(--ink); }
+.field:focus { outline: 2px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
+.money { position: relative; min-width: 0; }
+.money .field { padding-right: 1.6em; text-align: right; font-variant-numeric: tabular-nums; }
+.money span { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); color: var(--ink-soft); pointer-events: none; }
+.x { width: 40px; height: 40px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); font-size: 1.25rem; line-height: 1; }
+.x:hover { background: var(--ground); color: var(--bad); }
+.add { justify-self: start; padding: 8px 2px; border: 0; background: none; color: var(--ink); font-weight: 600; }
+.add:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Ảnh phiếu */
+.shot { width: min(520px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 16px; border: 0; border-radius: 10px; background: var(--sheet); color: var(--ink); box-shadow: var(--shadow); }
+.shot[open] { display: grid; gap: 12px; }
+.shot::backdrop { background: rgb(10 12 16 / .55); }
+.shot-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.shot-head h2 { margin: 0; font-size: var(--t-base); font-weight: 600; }
+.shot-img { display: block; width: 100%; height: auto; max-height: 60vh; object-fit: contain; border: 1px solid var(--rule); border-radius: 6px; }
+.shot-note { margin: 0; font-size: var(--t-small); color: var(--ink-soft); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .x { transition: background-color .15s, color .15s, opacity .15s; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <noscript><p class="noscript">Trang đang mở ở chế độ xem trước nên các nút bấm không chạy. Hãy mở trang bằng trình duyệt (Safari hoặc Chrome) qua đường link.</p></noscript>
+  <header class="top">
+    <h1>Tiền trọ</h1>
+    <div class="stepper" role="group" aria-label="Tháng của phiếu">
+      <button type="button" id="prev-month" aria-label="Lùi một tháng">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <output id="month-label" aria-live="polite">Tháng 10/2026</output>
+      <button type="button" id="next-month" aria-label="Tới một tháng">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="bench">
+    <section class="readings" aria-labelledby="readings-label">
+      <h2 class="label" id="readings-label">Số điện</h2>
+      <p class="prev" id="last-month">Chưa có số tháng trước. Bấm “Chốt tháng” sau khi gửi phiếu để trang lưu lại.</p>
+      <div class="meters">
+        <label class="m-label m-label-old" for="old">Chỉ số cũ</label>
+        <label class="m-label m-label-new" for="new">Chỉ số mới</label>
+        <div class="meter meter-old">
+          <input id="old" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="0000" value="1223">
+          <span class="unit" aria-hidden="true">kWh</span>
+        </div>
+        <span class="arrow" aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M3 9h12M11 5l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <div class="meter meter-new">
+          <input id="new" inputmode="numeric" autocomplete="off" maxlength="7" placeholder="0000" value="1313">
+          <span class="unit" aria-hidden="true">kWh</span>
+        </div>
+      </div>
+      <p class="usage" id="usage">Tiêu thụ <b>90 kWh</b> × 4.000đ = <b>360.000đ</b></p>
+      <p class="error" id="error" role="alert" hidden></p>
+    </section>
+
+    <section class="slip" aria-labelledby="slip-month">
+      <header class="slip-head">
+        <p>Phiếu tiền trọ</p>
+        <h2 id="slip-month">Tháng 10/2026</h2>
+      </header>
+      <ul class="lines" id="lines">
+        <li class="line"><span class="name">Tiền điện</span><span class="dots" aria-hidden="true"></span><span class="amt">360.000đ</span><span class="how">1313 − 1223 = 90 kWh × 4.000đ</span></li>
+        <li class="line"><span class="name">Tiền phòng</span><span class="dots" aria-hidden="true"></span><span class="amt">3.000.000đ</span></li>
+        <li class="line"><span class="name">Tiền nước</span><span class="dots" aria-hidden="true"></span><span class="amt">60.000đ</span></li>
+        <li class="line"><span class="name">Tiền rác</span><span class="dots" aria-hidden="true"></span><span class="amt">20.000đ</span></li>
+        <li class="line"><span class="name">Tiền xe</span><span class="dots" aria-hidden="true"></span><span class="amt">150.000đ</span></li>
+      </ul>
+      <div class="total"><span>Tổng cộng</span><strong><mark id="total">3.590.000đ</mark></strong></div>
+      <p class="words" id="words">Bằng chữ: Ba triệu năm trăm chín mươi nghìn đồng.</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="copy" disabled>Sao chép phiếu</button>
+        <button type="button" class="btn" id="copy-image" disabled>Sao chép ảnh</button>
+      </div>
+      <p class="status" id="copy-status" role="status" hidden></p>
+      <textarea class="fallback" id="fallback" readonly hidden aria-label="Nội dung phiếu để tự sao chép"></textarea>
+      <div class="closing">
+        <button type="button" class="btn" id="close-month" disabled>Chốt tháng 10</button>
+        <p class="hint" id="close-hint">Bấm sau khi đã gửi phiếu: trang lưu chỉ số 1313 và tổng 3.590.000đ làm số tháng trước, rồi mở phiếu tháng 11/2026.</p>
+        <p class="status" id="close-status" role="status" hidden><span id="close-status-text"></span><button type="button" class="link" id="undo" hidden>Hoàn tác</button></p>
+      </div>
+    </section>
+
+    <details class="prices" id="prices">
+      <summary><span class="label">Giá &amp; khoản cố định</span><span class="sum" id="prices-sum">4.000đ/kWh · cố định 3.230.000đ</span></summary>
+      <div class="prices-body">
+        <div class="row">
+          <label for="price">Giá điện mỗi kWh</label>
+          <div class="money"><input class="field" id="price" inputmode="numeric" autocomplete="off" maxlength="9" value="4.000"><span aria-hidden="true">đ</span></div>
+        </div>
+        <ul class="items" id="items"></ul>
+        <button type="button" class="add" id="add-item">+ Thêm khoản</button>
+      </div>
+    </details>
+  </div>
+</main>
+
+<dialog class="shot" id="shot" aria-labelledby="shot-title">
+  <div class="shot-head">
+    <h2 id="shot-title">Ảnh phiếu</h2>
+    <button type="button" class="x" id="shot-close" aria-label="Đóng">×</button>
+  </div>
+  <img class="shot-img" id="shot-img" alt="">
+  <p class="shot-note">Trình duyệt này không cho chép ảnh tự động. Bấm giữ vào ảnh (trên máy tính: chuột phải) rồi chọn Sao chép ảnh.</p>
+</dialog>
+
+<script>
+(() => {
+  'use strict';
+
+  // <calc>
+  const nf = new Intl.NumberFormat('vi-VN');
+  const money = n => nf.format(n) + 'đ';
+
+  function parseDigits(text) {
+    const digits = String(text ?? '').replace(/\D+/g, '');
+    return digits === '' ? null : Number(digits);
+  }
+
+  function monthLabel(ym) {
+    const [y, m] = ym.split('-');
+    return `${Number(m)}/${y}`;
+  }
+
+  function shiftMonth(ym, delta) {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  const thisMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  function computeBill({ month, oldReading, newReading, price, items }) {
+    const fixed = items
+      .filter(it => it.name.trim() || it.amount)
+      .map(it => ({ name: it.name.trim() || 'Khoản khác', amount: it.amount || 0 }));
+    const bill = { month, oldReading, newReading, price, items: fixed };
+    if (oldReading == null || newReading == null) return { ...bill, ok: false, reason: 'missing' };
+    if (newReading < oldReading) return { ...bill, ok: false, reason: 'backwards' };
+    const kwh = newReading - oldReading;
+    const elec = kwh * price;
+    const total = fixed.reduce((sum, it) => sum + it.amount, elec);
+    return { ...bill, ok: true, kwh, elec, total };
+  }
+
+  const DIGIT_WORDS = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+  // Đọc một nhóm 3 chữ số. `full`: đã có nhóm lớn hơn đứng trước nên phải đọc cả "không trăm", "linh".
+  function readGroup(n, full) {
+    const h = Math.floor(n / 100), t = Math.floor(n / 10) % 10, u = n % 10;
+    const words = [];
+    if (h || full) words.push(DIGIT_WORDS[h], 'trăm');
+    if (t === 0) { if (u && (h || full)) words.push('linh'); }
+    else if (t === 1) words.push('mười');
+    else words.push(DIGIT_WORDS[t], 'mươi');
+    if (u === 1 && t > 1) words.push('mốt');
+    else if (u === 5 && t > 0) words.push('lăm');
+    else if (u) words.push(DIGIT_WORDS[u]);
+    return words.join(' ');
+  }
+
+  function amountInWords(n) {
+    if (n === 0) return 'Không đồng';
+    if (!Number.isSafeInteger(n) || n < 0 || n >= 1e12) return '';
+    const scales = ['', 'nghìn', 'triệu', 'tỷ'];
+    const groups = [];
+    for (let x = n; x > 0; x = Math.floor(x / 1000)) groups.push(x % 1000);
+    const parts = [];
+    for (let i = groups.length - 1; i >= 0; i--) {
+      if (!groups[i]) continue;
+      parts.push(readGroup(groups[i], i < groups.length - 1));
+      if (scales[i]) parts.push(scales[i]);
+    }
+    const text = parts.join(' ') + ' đồng';
+    return text[0].toUpperCase() + text.slice(1);
+  }
+
+  function billText(b) {
+    return [
+      `TIỀN TRỌ THÁNG ${monthLabel(b.month)}`,
+      `- Tiền điện: ${b.newReading} - ${b.oldReading} = ${b.kwh} kWh × ${money(b.price)} = ${money(b.elec)}`,
+      ...b.items.map(it => `- ${it.name}: ${money(it.amount)}`),
+      `TỔNG CỘNG: ${money(b.total)}`,
+    ].join('\n');
+  }
+
+  function defaults() {
+    return {
+      price: 4000,
+      items: [
+        { id: 'k1', name: 'Tiền phòng', amount: 3000000 },
+        { id: 'k2', name: 'Tiền nước', amount: 60000 },
+        { id: 'k3', name: 'Tiền rác', amount: 20000 },
+        { id: 'k4', name: 'Tiền xe', amount: 150000 },
+      ],
+      // Phiếu gần nhất trong ảnh (1223 → 1313), coi là phiếu tháng này.
+      current: { month: thisMonth(), old: 1223, new: 1313 },
+      previous: null,
+    };
+  }
+
+  const isAmount = v => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+  const isMonth = v => typeof v === 'string' && /^\d{4}-\d{2}$/.test(v);
+
+  // Làm sạch dữ liệu đọc từ trình duyệt; null nếu không dùng được.
+  function normalize(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const base = defaults();
+    const cur = raw.current && typeof raw.current === 'object' ? raw.current : {};
+    const prev = raw.previous && typeof raw.previous === 'object' ? raw.previous : null;
+    return {
+      price: isAmount(raw.price) ? raw.price : base.price,
+      items: Array.isArray(raw.items)
+        ? raw.items
+            .filter(it => it && typeof it.id === 'string')
+            .map(it => ({ id: it.id, name: String(it.name ?? ''), amount: isAmount(it.amount) ? it.amount : 0 }))
+        : base.items,
+      current: {
+        month: isMonth(cur.month) ? cur.month : base.current.month,
+        old: isAmount(cur.old) ? cur.old : null,
+        new: isAmount(cur.new) ? cur.new : null,
+      },
+      previous: prev && isAmount(prev.reading) && isAmount(prev.total)
+        ? { month: isMonth(prev.month) ? prev.month : null, reading: prev.reading, total: prev.total }
+        : null,
+    };
+  }
+
+  // Dữ liệu của bản cũ (có nút chốt sổ): tháng chốt gần nhất thành "tháng trước".
+  function fromV1(v1) {
+    if (!v1 || typeof v1 !== 'object') return null;
+    const closed = Array.isArray(v1.history) ? v1.history.filter(h => h && isMonth(h.month)) : [];
+    const last = closed.sort((a, b) => b.month.localeCompare(a.month))[0];
+    return {
+      price: v1.price,
+      items: v1.items,
+      current: v1.draft,
+      previous: last ? { month: last.month, reading: last.newReading, total: last.total } : null,
+    };
+  }
+
+  // Chốt: phiếu tháng này thành "tháng trước" (chỉ số mới + tổng tiền), rồi mở phiếu tháng sau
+  // với chỉ số cũ là chỉ số vừa chốt. Phiếu chưa đủ số thì không chốt được (trả null).
+  function closeMonth(state) {
+    const cur = state.current;
+    const bill = computeBill({ month: cur.month, oldReading: cur.old, newReading: cur.new, price: state.price, items: state.items });
+    if (!bill.ok) return null;
+    return {
+      ...state,
+      current: { month: shiftMonth(cur.month, 1), old: cur.new, new: null },
+      previous: { month: cur.month, reading: cur.new, total: bill.total },
+    };
+  }
+  // </calc>
+
+  const STORE_KEY = 'tien-tro/v2';
+  const V1_KEY = 'so-tien-tro/v1';
+
+  function readJson(key) {
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+  }
+
+  function load() {
+    return normalize(readJson(STORE_KEY)) || normalize(fromV1(readJson(V1_KEY))) || defaults();
+  }
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { /* trình duyệt chặn lưu: vẫn tính được, chỉ không nhớ */ }
+  }
+
+  let state = load();
+
+  const $ = id => document.getElementById(id);
+  const ui = {
+    monthLabel: $('month-label'), prevMonth: $('prev-month'), nextMonth: $('next-month'),
+    lastMonth: $('last-month'), old: $('old'), new: $('new'), usage: $('usage'), error: $('error'),
+    slipMonth: $('slip-month'), lines: $('lines'), total: $('total'), words: $('words'),
+    copy: $('copy'), copyImage: $('copy-image'), copyStatus: $('copy-status'), fallback: $('fallback'),
+    close: $('close-month'), closeHint: $('close-hint'), closeStatus: $('close-status'),
+    closeStatusText: $('close-status-text'), undo: $('undo'),
+    price: $('price'), items: $('items'), addItem: $('add-item'), pricesSum: $('prices-sum'),
+    shot: $('shot'), shotTitle: $('shot-title'), shotImg: $('shot-img'), shotClose: $('shot-close'),
+  };
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  const currentBill = () => computeBill({
+    month: state.current.month,
+    oldReading: state.current.old,
+    newReading: state.current.new,
+    price: state.price,
+    items: state.items,
+  });
+
+  function slipLine(name, amount, how) {
+    const li = el('li', 'line');
+    const dots = el('span', 'dots');
+    dots.setAttribute('aria-hidden', 'true');
+    li.append(el('span', 'name', name), dots, el('span', 'amt', amount));
+    if (how) li.append(el('span', 'how', how));
+    return li;
+  }
+
+  let copyTimer = 0;
+  function sayCopy(message) {
+    clearTimeout(copyTimer);
+    ui.copyStatus.textContent = message;
+    ui.copyStatus.hidden = false;
+    copyTimer = setTimeout(() => { ui.copyStatus.hidden = true; }, 8000);
+  }
+
+  let closeTimer = 0;
+  let undoState = null;
+  function sayClosed(message, undo = null) {
+    clearTimeout(closeTimer);
+    ui.closeStatusText.textContent = message;
+    ui.closeStatus.hidden = false;
+    undoState = undo;
+    ui.undo.hidden = !undo;
+    closeTimer = setTimeout(() => { ui.closeStatus.hidden = true; undoState = null; }, undo ? 10000 : 5000);
+  }
+
+  function renderLastMonth(bill) {
+    const b = text => el('b', null, text);
+    const p = state.previous;
+    if (!p) {
+      ui.lastMonth.textContent = 'Chưa có số tháng trước. Bấm “Chốt tháng” sau khi gửi phiếu để trang lưu lại.';
+      return;
+    }
+    const parts = [`Tháng trước${p.month ? ` (${monthLabel(p.month)})` : ''}: chỉ số `, b(String(p.reading)), ', tổng ', b(money(p.total)), '.'];
+    if (bill.ok) {
+      const diff = bill.total - p.total;
+      if (diff === 0) parts.push(' Tháng này bằng tháng trước.');
+      else parts.push(` Tháng này ${diff > 0 ? 'cao' : 'thấp'} hơn `, b(money(Math.abs(diff))), '.');
+    }
+    ui.lastMonth.replaceChildren(...parts);
+  }
+
+  function render() {
+    const bill = currentBill();
+    const label = monthLabel(state.current.month);
+    ui.monthLabel.textContent = `Tháng ${label}`;
+    ui.slipMonth.textContent = `Tháng ${label}`;
+    ui.close.textContent = `Chốt tháng ${label.split('/')[0]}`;
+    renderLastMonth(bill);
+
+    const backwards = bill.reason === 'backwards';
+    ui.error.hidden = !backwards;
+    ui.usage.hidden = backwards;
+    if (backwards) {
+      ui.error.textContent = `Chỉ số mới (${bill.newReading}) nhỏ hơn chỉ số cũ (${bill.oldReading}). Kiểm tra lại số trên công tơ.`;
+    } else if (bill.ok) {
+      ui.usage.replaceChildren('Tiêu thụ ', el('b', null, `${bill.kwh} kWh`), ` × ${money(bill.price)} = `, el('b', null, money(bill.elec)));
+    } else {
+      ui.usage.textContent = bill.oldReading == null
+        ? 'Nhập chỉ số cũ (số tháng trước) và chỉ số mới trên công tơ.'
+        : 'Nhập chỉ số mới đọc trên công tơ để tính tiền điện.';
+    }
+
+    const elecNote = bill.ok
+      ? `${bill.newReading} − ${bill.oldReading} = ${bill.kwh} kWh × ${money(bill.price)}`
+      : backwards ? 'Chỉ số chưa hợp lệ' : 'Chờ đủ chỉ số công tơ';
+    ui.lines.replaceChildren(
+      slipLine('Tiền điện', bill.ok ? money(bill.elec) : '—', elecNote),
+      ...bill.items.map(it => slipLine(it.name, money(it.amount))),
+    );
+    ui.total.textContent = bill.ok ? money(bill.total) : '—';
+    ui.total.classList.toggle('is-blank', !bill.ok);
+    const words = bill.ok ? amountInWords(bill.total) : '';
+    ui.words.textContent = words ? `Bằng chữ: ${words}.` : '';
+    ui.words.hidden = !words;
+    ui.copy.disabled = !bill.ok;
+    ui.copyImage.disabled = !bill.ok;
+    ui.fallback.hidden = true;
+    ui.close.disabled = !bill.ok;
+    ui.closeHint.hidden = !bill.ok;
+    if (bill.ok) {
+      ui.closeHint.textContent = `Bấm sau khi đã gửi phiếu: trang lưu chỉ số ${bill.newReading} và tổng ${money(bill.total)} làm số tháng trước, rồi mở phiếu tháng ${monthLabel(shiftMonth(bill.month, 1))}.`;
+    }
+
+    const fixedSum = state.items.reduce((sum, it) => sum + it.amount, 0);
+    ui.pricesSum.textContent = `${money(state.price)}/kWh · cố định ${money(fixedSum)}`;
+  }
+
+  function itemRow(it) {
+    const title = it.name.trim() || 'khoản này';
+    const li = el('li', 'row');
+
+    const name = el('input', 'field');
+    Object.assign(name, { id: `${it.id}-name`, value: it.name, placeholder: 'Tên khoản, vd. Internet', autocomplete: 'off' });
+    name.setAttribute('aria-label', 'Tên khoản');
+    Object.assign(name.dataset, { id: it.id, role: 'name' });
+
+    const wrap = el('div', 'money');
+    const amount = el('input', 'field');
+    Object.assign(amount, { id: `${it.id}-amount`, value: it.amount ? nf.format(it.amount) : '', placeholder: '0', inputMode: 'numeric', autocomplete: 'off', maxLength: 13 });
+    amount.setAttribute('aria-label', `Số tiền ${title}`);
+    Object.assign(amount.dataset, { id: it.id, role: 'amount' });
+    const unit = el('span', null, 'đ');
+    unit.setAttribute('aria-hidden', 'true');
+    wrap.append(amount, unit);
+
+    const remove = el('button', 'x', '×');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', `Bỏ ${title}`);
+    Object.assign(remove.dataset, { id: it.id, role: 'remove' });
+
+    li.append(name, wrap, remove);
+    return li;
+  }
+
+  function renderItems() {
+    ui.items.replaceChildren(...state.items.map(itemRow));
+  }
+
+  function renderAll() {
+    ui.old.value = state.current.old ?? '';
+    ui.new.value = state.current.new ?? '';
+    ui.price.value = nf.format(state.price);
+    renderItems();
+    render();
+  }
+
+  // ---- Gửi phiếu dạng chữ ----
+  // Thử Clipboard API, rồi execCommand; nếu đều bị chặn thì bôi đen sẵn để người dùng tự chép.
+  function legacyCopy(text) {
+    const ta = el('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px;';
+    document.body.append(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length); // iPhone chỉ chọn được chữ bằng setSelectionRange
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+    return ok;
+  }
+
+  const flashTimers = new WeakMap();
+  function flash(button, label) {
+    if (!button.dataset.label) button.dataset.label = button.textContent;
+    button.textContent = label;
+    clearTimeout(flashTimers.get(button));
+    flashTimers.set(button, setTimeout(() => {
+      button.textContent = button.dataset.label;
+      delete button.dataset.label;
+    }, 1800));
+  }
+
+  function copyText(text, button) {
+    const done = () => { ui.fallback.hidden = true; flash(button, 'Đã sao chép'); };
+    const fail = () => {
+      ui.fallback.value = text;
+      ui.fallback.hidden = false;
+      ui.fallback.focus();
+      ui.fallback.select();
+      ui.fallback.setSelectionRange(0, text.length);
+      sayCopy('Không chép tự động được. Phiếu đã được bôi đen trong khung bên dưới, bấm Ctrl/⌘ + C (trên điện thoại: giữ ngón tay rồi chọn Sao chép).');
+    };
+    let pending = null;
+    try { pending = navigator.clipboard ? navigator.clipboard.writeText(text) : null; } catch { pending = null; }
+    if (pending) pending.then(done, () => (legacyCopy(text) ? done() : fail()));
+    else if (legacyCopy(text)) done();
+    else fail();
+  }
+
+  // ---- Chép phiếu dạng ảnh ----
+  // Ảnh luôn là tờ phiếu nền sáng, không đổi theo giao diện tối.
+  const PAPER = { bg: '#FCFCFD', ink: '#161B27', soft: '#566075', rule: '#C8CEDA', mark: '#FFDE4D' };
+  const BODY = '"Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const DISPLAY = '"Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif';
+
+  function wrapText(ctx, text, width) {
+    const lines = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(next).width > width) { lines.push(line); line = word; }
+      else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function fitText(ctx, text, width) {
+    if (ctx.measureText(text).width <= width) return text;
+    let cut = text;
+    while (cut.length > 1 && ctx.measureText(cut + '…').width > width) cut = cut.slice(0, -1);
+    return cut + '…';
+  }
+
+  // Vẽ hai lượt: lượt đầu chỉ đo để biết chiều cao ảnh, lượt sau vẽ thật.
+  function drawSlip(bill) {
+    const W = 540, PAD = 36, SCALE = 2;
+    const right = W - PAD;
+    const rows = [
+      { name: 'Tiền điện', amount: money(bill.elec), how: `${bill.newReading} − ${bill.oldReading} = ${bill.kwh} kWh × ${money(bill.price)}` },
+      ...bill.items.map(it => ({ name: it.name, amount: money(it.amount) })),
+    ];
+    const words = amountInWords(bill.total);
+
+    const layout = (ctx, draw) => {
+      const text = (str, x, y, font, color, align = 'left') => {
+        if (!draw) return;
+        ctx.font = font;
+        ctx.fillStyle = color;
+        ctx.textAlign = align;
+        ctx.fillText(str, x, y);
+      };
+      const rule = (y, width, dash) => {
+        if (!draw) return;
+        ctx.save();
+        ctx.strokeStyle = dash ? PAPER.rule : PAPER.ink;
+        ctx.lineWidth = width;
+        if (dash) ctx.setLineDash(dash);
+        ctx.beginPath();
+        ctx.moveTo(PAD, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      let y = PAD + 13;
+      text('PHIẾU TIỀN TRỌ', PAD, y, `600 13px ${BODY}`, PAPER.soft);
+      y += 36;
+      text(`Tháng ${monthLabel(bill.month)}`, PAD, y, `600 32px ${DISPLAY}`, PAPER.ink);
+      y += 15;
+      rule(y, 2);
+      y += 17;
+
+      for (const row of rows) {
+        y += 18;
+        ctx.font = `500 17px ${BODY}`;
+        const amountWidth = ctx.measureText(row.amount).width;
+        ctx.font = `400 17px ${BODY}`;
+        const name = fitText(ctx, row.name, right - PAD - amountWidth - 48);
+        const nameWidth = ctx.measureText(name).width;
+        text(name, PAD, y, `400 17px ${BODY}`, PAPER.ink);
+        text(row.amount, right, y, `500 17px ${BODY}`, PAPER.ink, 'right');
+        if (draw) {
+          ctx.save();
+          ctx.strokeStyle = PAPER.rule;
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.setLineDash([0.1, 5]);
+          ctx.beginPath();
+          ctx.moveTo(PAD + nameWidth + 10, y - 4);
+          ctx.lineTo(right - amountWidth - 10, y - 4);
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (row.how) {
+          y += 20;
+          text(row.how, PAD, y, `400 13px ${BODY}`, PAPER.soft);
+        }
+        y += 12;
+      }
+
+      y += 4;
+      rule(y, 2, [6, 5]);
+      y += 54;
+      const total = money(bill.total);
+      ctx.font = `600 46px ${DISPLAY}`;
+      const m = ctx.measureText(total);
+      if (draw) {
+        const top = y - (m.actualBoundingBoxAscent || 34) - 5;
+        const bottom = y + (m.actualBoundingBoxDescent || 0) + 5;
+        ctx.fillStyle = PAPER.mark;
+        ctx.fillRect(right - m.width - 6, top, m.width + 12, bottom - top);
+      }
+      text(total, right, y, `600 46px ${DISPLAY}`, PAPER.ink, 'right');
+      text('Tổng cộng', PAD, y, `600 17px ${BODY}`, PAPER.ink);
+
+      if (words) {
+        ctx.font = `italic 400 13px ${BODY}`;
+        y += 10;
+        for (const line of wrapText(ctx, `Bằng chữ: ${words}.`, right - PAD)) {
+          y += 19;
+          text(line, PAD, y, `italic 400 13px ${BODY}`, PAPER.soft);
+        }
+      }
+      return y + PAD - 4;
+    };
+
+    const height = Math.ceil(layout(document.createElement('canvas').getContext('2d'), false));
+    const canvas = document.createElement('canvas');
+    canvas.width = W * SCALE;
+    canvas.height = height * SCALE;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(SCALE, SCALE);
+    ctx.fillStyle = PAPER.bg;
+    ctx.fillRect(0, 0, W, height);
+    layout(ctx, true);
+    return canvas;
+  }
+
+  // Tạo ảnh đồng bộ (toDataURL) để lệnh chép vẫn nằm trong cú bấm của người dùng (Safari đòi điều này).
+  function slipImage(bill) {
+    const dataUrl = drawSlip(bill).toDataURL('image/png');
+    const bytes = atob(dataUrl.split(',')[1]);
+    const buffer = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+    return new Blob([buffer], { type: 'image/png' });
+  }
+
+  // Trình duyệt chặn chép ảnh: hiện ảnh để người dùng tự bấm giữ / chuột phải rồi chép.
+  let shotUrl = '';
+  function showShot(bill, blob) {
+    if (shotUrl) URL.revokeObjectURL(shotUrl);
+    shotUrl = URL.createObjectURL(blob);
+    ui.shotTitle.textContent = `Ảnh phiếu tháng ${monthLabel(bill.month)}`;
+    ui.shotImg.src = shotUrl;
+    ui.shotImg.alt = `Phiếu tiền trọ tháng ${monthLabel(bill.month)}, tổng cộng ${money(bill.total)}`;
+    if (!ui.shot.open) ui.shot.showModal();
+  }
+
+  ui.copyImage.addEventListener('click', () => {
+    const bill = currentBill();
+    if (!bill.ok) return;
+    const blob = slipImage(bill);
+    const fallback = () => showShot(bill, blob);
+    if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) { fallback(); return; }
+    try {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        .then(() => flash(ui.copyImage, 'Đã sao chép ảnh'), fallback);
+    } catch {
+      fallback();
+    }
+  });
+
+  ui.shotClose.addEventListener('click', () => ui.shot.close());
+  ui.shot.addEventListener('click', e => {
+    if (e.target !== ui.shot) return;
+    const r = ui.shot.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) ui.shot.close();
+  });
+
+  // ---- Nhập liệu ----
+  for (const [input, key] of [[ui.old, 'old'], [ui.new, 'new']]) {
+    input.addEventListener('input', () => {
+      const clean = input.value.replace(/\D+/g, '');
+      if (clean !== input.value) input.value = clean;
+      state.current[key] = parseDigits(clean);
+      save();
+      render();
+    });
+  }
+
+  ui.price.addEventListener('input', () => { state.price = parseDigits(ui.price.value) ?? 0; save(); render(); });
+  ui.price.addEventListener('blur', () => { ui.price.value = nf.format(state.price); });
+
+  const findItem = id => state.items.find(it => it.id === id);
+  const newItemId = () => `k${state.items.reduce((max, it) => Math.max(max, Number(it.id.slice(1)) || 0), 0) + 1}`;
+
+  ui.items.addEventListener('input', e => {
+    const t = e.target;
+    const it = findItem(t.dataset.id);
+    if (!it) return;
+    if (t.dataset.role === 'name') {
+      it.name = t.value;
+      const row = t.closest('li');
+      const title = it.name.trim() || 'khoản này';
+      row.querySelector('[data-role="amount"]').setAttribute('aria-label', `Số tiền ${title}`);
+      row.querySelector('[data-role="remove"]').setAttribute('aria-label', `Bỏ ${title}`);
+    } else if (t.dataset.role === 'amount') {
+      it.amount = parseDigits(t.value) ?? 0;
+    }
+    save();
+    render();
+  });
+  ui.items.addEventListener('focusout', e => {
+    const t = e.target;
+    if (t.dataset.role !== 'amount') return;
+    const it = findItem(t.dataset.id);
+    if (it) t.value = it.amount ? nf.format(it.amount) : '';
+  });
+  ui.items.addEventListener('click', e => {
+    const btn = e.target.closest('[data-role="remove"]');
+    if (!btn) return;
+    state.items = state.items.filter(it => it.id !== btn.dataset.id);
+    save();
+    renderItems();
+    render();
+    ui.addItem.focus();
+  });
+  ui.addItem.addEventListener('click', () => {
+    const it = { id: newItemId(), name: '', amount: 0 };
+    state.items.push(it);
+    save();
+    renderItems();
+    render();
+    $(`${it.id}-name`).focus();
+  });
+
+  ui.copy.addEventListener('click', () => {
+    const bill = currentBill();
+    if (bill.ok) copyText(billText(bill), ui.copy);
+  });
+
+  ui.prevMonth.addEventListener('click', () => { state.current.month = shiftMonth(state.current.month, -1); save(); render(); });
+  ui.nextMonth.addEventListener('click', () => { state.current.month = shiftMonth(state.current.month, 1); save(); render(); });
+
+  ui.close.addEventListener('click', () => {
+    const next = closeMonth(state);
+    if (!next) return;
+    const before = state;
+    state = next;
+    save();
+    renderAll();
+    sayClosed(`Đã chốt tháng ${monthLabel(before.current.month)}: lưu chỉ số ${next.previous.reading} và tổng ${money(next.previous.total)}.`, before);
+  });
+
+  ui.undo.addEventListener('click', () => {
+    if (!undoState) return;
+    state = undoState;
+    save();
+    renderAll();
+    sayClosed(`Đã hoàn tác, phiếu tháng ${monthLabel(state.current.month)} trở lại như trước khi chốt.`);
+  });
+
+  // Nạp sẵn phông cho ảnh phiếu, để lúc bấm "Sao chép ảnh" chữ trong ảnh đúng phông.
+  if (document.fonts && document.fonts.load) {
+    const sample = 'Tổng cộng Tiền điện 0123456789đ';
+    for (const font of [`600 32px ${DISPLAY}`, `400 17px ${BODY}`, `500 17px ${BODY}`, `600 17px ${BODY}`, `italic 400 13px ${BODY}`]) {
+      document.fonts.load(font, sample).catch(() => {});
+    }
+  }
+
+  save(); // ghi lại ngay để phiếu mẫu giữ đúng tháng của lần mở đầu tiên
+  renderAll();
+})();
+</script>
+</body>
+</html>
